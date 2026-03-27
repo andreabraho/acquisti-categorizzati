@@ -424,11 +424,90 @@
   .cat-body.collapsed { display: none; }
 
   @media (max-width: 600px) {
-    main { padding: 16px; }
-    .totals-bar { grid-template-columns: 1fr; }
-    header { padding: 0 16px; gap: 16px; }
+    /* GENERAL */
+    body { font-size: 14px; }
+    main { padding: 12px; }
+
+    /* HEADER */
+    header { padding: 0 12px; gap: 6px; height: 52px; flex-wrap: nowrap; }
+    header h1 { font-size: 15px; white-space: nowrap; }
+    nav { gap: 2px; }
+    nav button { padding: 6px 10px; font-size: 13px; }
+    #header-username { display: none; }
+    .btn-logout { padding: 5px 9px; font-size: 12px; }
+    .header-user { gap: 6px; }
+
+    /* SERVER BADGE → colored dot */
+    .server-badge { font-size: 0; padding: 0; width: 10px; height: 10px; border-radius: 50%; border: none; flex-shrink: 0; }
+    .server-badge.online       { background: var(--success); }
+    .server-badge.offline      { background: #c87a00; }
+    .server-badge.unconfigured { background: var(--danger); }
+    .server-badge.connecting   { background: var(--accent); }
+
+    /* TOTALS — 2 col, last full width */
+    .totals-bar { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .totals-bar > .total-card:last-child { grid-column: 1 / -1; }
+    .total-card { padding: 12px 14px; border-radius: 10px; }
+    .total-card .amount { font-size: 18px; }
+    .total-card .label { font-size: 10px; }
+
+    /* CATEGORY HEADER */
+    .category-header { padding: 11px 14px; }
     .cat-totals { display: none; }
+    .drag-handle { display: none; }
+
+    /* TABLE — bigger touch targets */
     .items-table th.hide-mobile, .items-table td.hide-mobile { display: none; }
+    .items-table td { padding: 12px 14px; }
+    .items-table th { padding: 8px 14px; }
+    .item-check { gap: 10px; }
+    .item-check input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
+    .btn-icon { padding: 8px 10px; font-size: 18px; }
+    .add-item-row td { padding: 10px 14px; }
+
+    /* MODAL — bottom sheet */
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .modal {
+      border-radius: 20px 20px 0 0;
+      max-width: 100%;
+      width: 100%;
+      padding: 24px 20px;
+      padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+      animation: slideUp 0.22s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+
+    /* Prevent iOS zoom on input focus — must be ≥ 16px */
+    input, textarea, select { font-size: 16px !important; }
+
+    /* LOGIN — full screen */
+    #login-screen { align-items: flex-start; }
+    .login-card {
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      min-height: 100dvh;
+      padding: 60px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* SETTINGS */
+    .settings-section { padding: 16px; border-radius: 10px; }
+    .settings-section h2 { font-size: 15px; }
+    .theme-grid { grid-template-columns: 1fr 1fr; }
+    .theme-save-row { flex-direction: column; align-items: stretch; }
+    .theme-save-row .btn { width: 100%; text-align: center; }
+    .io-row { flex-direction: column; }
+    .io-row .btn { width: 100%; justify-content: center; }
+  }
+
+  /* Extra small phones */
+  @media (max-width: 380px) {
+    header h1 { display: none; }
+    nav button { padding: 6px 8px; font-size: 12px; }
   }
 </style>
 </head>
