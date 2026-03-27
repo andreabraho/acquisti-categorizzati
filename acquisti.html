@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acquisti Categorizzati</title>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -625,6 +626,7 @@
       <div class="settings-section">
         <h2>Esporta / Importa</h2>
         <div class="io-row">
+          <button class="btn btn-primary" onclick="exportExcel()">📊 Esporta Excel</button>
           <button class="btn btn-secondary" onclick="exportData()">⬇ Esporta JSON</button>
           <label class="btn btn-secondary" style="cursor:pointer;">
             ⬆ Importa JSON
@@ -1189,6 +1191,128 @@ function initDragDrop() {
       handle.addEventListener('mousedown', e => e.stopPropagation());
     }
   });
+}
+
+// ---- EXPORT EXCEL ----
+function exportExcel() {
+  if (typeof XLSX === 'undefined') { showToast('Libreria Excel non caricata'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const totals = computeTotals();
+  const date = new Date().toLocaleDateString('it-IT');
+  const currency = v => v !== null && v !== undefined ? v : '';
+
+  // ---- SHEET 1: Dettaglio ----
+  const detail = [];
+
+  // Intestazione
+  detail.push(['ACQUISTI CATEGORIZZATI']);
+  detail.push([`Esportato il: ${date}`, '', '', '', '', '', `Utente: ${currentUser?.username || ''}`]);
+  detail.push([]);
+
+  // Riepilogo generale
+  detail.push(['RIEPILOGO GENERALE']);
+  detail.push(['', 'Voci', 'Importo']);
+  detail.push(['Da acquistare (stimato)', totals.pendingCount, totals.estimated]);
+  detail.push(['Già acquistato', totals.purchasedCount, totals.actual]);
+  detail.push(['TOTALE COMPLESSIVO', totals.pendingCount + totals.purchasedCount, totals.estimated + totals.actual]);
+  detail.push([]);
+
+  // Dettaglio per categoria
+  data.categories.forEach(cat => {
+    const items = data.items.filter(i => i.categoryId === cat.id);
+    if (items.length === 0) return;
+
+    detail.push([cat.name.toUpperCase()]);
+    detail.push([
+      'Voce', 'Qtà',
+      'Prezzo unit. stimato', 'Totale stimato',
+      'Prezzo unit. acquisto', 'Totale acquisto',
+      'Risparmio / Differenza',
+      'Stato', 'Note',
+    ]);
+
+    let catEstTotal = 0, catActTotal = 0;
+
+    items.forEach(item => {
+      const q   = item.qty ?? 1;
+      const est = item.estimatedPrice;
+      const act = item.actualPrice ?? (item.purchased ? item.estimatedPrice : null);
+      const estTot = est !== null ? est * q : null;
+      const actTot = act !== null ? act * q : null;
+      const diff   = estTot !== null && actTot !== null ? estTot - actTot : null;
+
+      if (!item.purchased && estTot !== null) catEstTotal += estTot;
+      if (item.purchased  && actTot !== null) catActTotal += actTot;
+
+      detail.push([
+        item.name,
+        q,
+        currency(est),
+        currency(estTot),
+        currency(item.actualPrice),
+        currency(actTot),
+        currency(diff),
+        item.purchased ? 'Acquistato' : 'Da acquistare',
+        item.notes || '',
+      ]);
+    });
+
+    // Totale categoria
+    detail.push([
+      `Totale ${cat.name}`, '',
+      '', catEstTotal > 0 ? catEstTotal : '',
+      '', catActTotal > 0 ? catActTotal : '',
+      catEstTotal > 0 && catActTotal > 0 ? catEstTotal - catActTotal : '',
+      '', '',
+    ]);
+    detail.push([]);
+  });
+
+  const wsDetail = XLSX.utils.aoa_to_sheet(detail);
+
+  // Larghezze colonne
+  wsDetail['!cols'] = [
+    { wch: 32 }, { wch: 6  },
+    { wch: 22 }, { wch: 16 },
+    { wch: 22 }, { wch: 16 },
+    { wch: 22 },
+    { wch: 14 }, { wch: 35 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsDetail, 'Dettaglio');
+
+  // ---- SHEET 2: Riepilogo per categoria ----
+  const summary = [];
+  summary.push(['RIEPILOGO PER CATEGORIA']);
+  summary.push([`Esportato il: ${date}`, '', '', '', `Utente: ${currentUser?.username || ''}`]);
+  summary.push([]);
+  summary.push(['Categoria', 'Voci totali', 'Da acquistare (stimato)', 'Già acquistato', 'Totale categoria']);
+
+  data.categories.forEach(cat => {
+    const ct = computeCatTotals(cat.id);
+    const items = data.items.filter(i => i.categoryId === cat.id);
+    const tot = (ct.pendingEst ?? 0) + (ct.actualSum ?? 0);
+    summary.push([
+      cat.name,
+      items.length,
+      ct.pendingEst ?? 0,
+      ct.actualSum  ?? 0,
+      tot,
+    ]);
+  });
+
+  summary.push([]);
+  summary.push(['TOTALE', totals.pendingCount + totals.purchasedCount, totals.estimated, totals.actual, totals.estimated + totals.actual]);
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(summary);
+  wsSummary['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 18 }];
+
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Riepilogo');
+
+  const filename = `acquisti-${currentUser?.username || 'export'}-${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showToast('✓ Excel esportato');
 }
 
 // ---- EXPORT / IMPORT ----
