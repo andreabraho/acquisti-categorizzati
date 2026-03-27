@@ -163,6 +163,7 @@
   .items-table tr.purchased-row td:first-child .item-name { text-decoration: line-through; }
 
   .item-name { font-size: 14px; }
+  .item-qty { display: inline-block; font-size: 11px; font-weight: 600; background: var(--accent-light); color: var(--accent); border-radius: 5px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
   .item-notes { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
   .item-check { display: flex; align-items: center; gap: 8px; }
   .item-check input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--success); }
@@ -242,7 +243,7 @@
     transition: border-color 0.15s;
   }
   .form-group textarea:focus { border-color: var(--accent); }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row { display: grid; grid-template-columns: 80px 1fr 1fr; gap: 12px; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
 
   /* BUTTONS */
@@ -650,6 +651,10 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>Quantità</label>
+        <input type="number" id="item-qty-input" placeholder="1" min="1" step="1" value="1">
+      </div>
+      <div class="form-group">
         <label>Prezzo stimato (€)</label>
         <input type="number" id="item-estimated-input" placeholder="0.00" min="0" step="0.01">
       </div>
@@ -791,13 +796,14 @@ function fmtEur(n) {
 function computeTotals() {
   const all = { estimated: 0, actual: 0, pendingCount: 0, purchasedCount: 0 };
   data.items.forEach(item => {
+    const q = item.qty ?? 1;
     if (!item.purchased) {
       all.pendingCount++;
-      if (item.estimatedPrice !== null) all.estimated += item.estimatedPrice;
+      if (item.estimatedPrice !== null) all.estimated += item.estimatedPrice * q;
     } else {
       all.purchasedCount++;
-      if (item.actualPrice !== null) all.actual += item.actualPrice;
-      else if (item.estimatedPrice !== null) all.actual += item.estimatedPrice;
+      if (item.actualPrice !== null) all.actual += item.actualPrice * q;
+      else if (item.estimatedPrice !== null) all.actual += item.estimatedPrice * q;
     }
   });
   return all;
@@ -807,11 +813,12 @@ function computeCatTotals(catId) {
   const items = data.items.filter(i => i.categoryId === catId);
   let pendingEst = 0, actualSum = 0, hasPending = false, hasActual = false;
   items.forEach(item => {
+    const q = item.qty ?? 1;
     if (!item.purchased) {
-      if (item.estimatedPrice !== null) { pendingEst += item.estimatedPrice; hasPending = true; }
+      if (item.estimatedPrice !== null) { pendingEst += item.estimatedPrice * q; hasPending = true; }
     } else {
       const v = item.actualPrice !== null ? item.actualPrice : item.estimatedPrice;
-      if (v !== null) { actualSum += v; hasActual = true; }
+      if (v !== null) { actualSum += v * q; hasActual = true; }
     }
   });
   return { pendingEst: hasPending ? pendingEst : null, actualSum: hasActual ? actualSum : null, total: items.length };
@@ -871,7 +878,7 @@ function renderCategories() {
           <div class="item-check">
             <input type="checkbox" ${item.purchased ? 'checked' : ''} onchange="togglePurchased('${item.id}', this.checked)" title="Segna come acquistato">
             <div>
-              <span class="item-name">${escHtml(item.name)}</span>
+              <span class="item-name">${escHtml(item.name)}${(item.qty ?? 1) > 1 ? ` <span class="item-qty">×${item.qty}</span>` : ''}</span>
               ${item.notes ? `<div class="item-notes">${escHtml(item.notes)}</div>` : ''}
             </div>
           </div>
@@ -935,6 +942,7 @@ function openNewItem(catId) {
   modalItemId = null;
   document.getElementById('modal-title').textContent = 'Nuova voce';
   document.getElementById('item-name-input').value = '';
+  document.getElementById('item-qty-input').value = '1';
   document.getElementById('item-estimated-input').value = '';
   document.getElementById('item-actual-input').value = '';
   document.getElementById('item-notes-input').value = '';
@@ -949,6 +957,7 @@ function openEditItem(itemId) {
   modalItemId = itemId;
   document.getElementById('modal-title').textContent = 'Modifica voce';
   document.getElementById('item-name-input').value = item.name;
+  document.getElementById('item-qty-input').value = item.qty ?? 1;
   document.getElementById('item-estimated-input').value = item.estimatedPrice !== null ? item.estimatedPrice : '';
   document.getElementById('item-actual-input').value = item.actualPrice !== null ? item.actualPrice : '';
   document.getElementById('item-notes-input').value = item.notes || '';
@@ -959,6 +968,7 @@ function openEditItem(itemId) {
 function saveItem() {
   const name = document.getElementById('item-name-input').value.trim();
   if (!name) { document.getElementById('item-name-input').focus(); return; }
+  const qty = Math.max(1, parseInt(document.getElementById('item-qty-input').value) || 1);
   const estimated = fmt(document.getElementById('item-estimated-input').value);
   const actual = fmt(document.getElementById('item-actual-input').value);
   const notes = document.getElementById('item-notes-input').value.trim() || null;
@@ -968,6 +978,7 @@ function saveItem() {
       id: uid(),
       categoryId: modalCatId,
       name,
+      qty,
       purchased: actual !== null,
       estimatedPrice: estimated,
       actualPrice: actual,
@@ -977,6 +988,7 @@ function saveItem() {
     const item = data.items.find(i => i.id === modalItemId);
     if (item) {
       item.name = name;
+      item.qty = qty;
       item.estimatedPrice = estimated;
       item.actualPrice = actual;
       item.notes = notes;
