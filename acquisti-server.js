@@ -20,12 +20,12 @@ function loadConfig() {
   if (process.env.MONGODB_URI) {
     return {
       connectionString: process.env.MONGODB_URI,
-      database: process.env.MONGODB_DATABASE || 'acquisti_casa',
+      database: process.env.MONGODB_DATABASE || 'acquisti_categorizzati',
       collection: process.env.MONGODB_COLLECTION || 'dati',
     };
   }
   try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
-  catch { return { connectionString: null, database: 'acquisti_casa', collection: 'dati' }; }
+  catch { return { connectionString: null, database: 'acquisti_categorizzati', collection: 'dati' }; }
 }
 
 function saveConfig(cfg) {
@@ -79,7 +79,7 @@ app.post('/api/connect', async (req, res) => {
   try {
     testClient = new MongoClient(connectionString, { serverSelectionTimeoutMS: 6000 });
     await testClient.connect();
-    await testClient.db(database || 'acquisti_casa').command({ ping: 1 });
+    await testClient.db(database || 'acquisti_categorizzati').command({ ping: 1 });
     await testClient.close();
   } catch (e) {
     try { await testClient?.close(); } catch {}
@@ -90,7 +90,7 @@ app.post('/api/connect', async (req, res) => {
 
   config = {
     connectionString,
-    database: database || 'acquisti_casa',
+    database: database || 'acquisti_categorizzati',
     collection: collection || 'dati',
   };
   saveConfig(config);
