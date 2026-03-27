@@ -1325,6 +1325,7 @@ async function doLogin() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Errore');
     currentUser = { id: json.id, username: json.username };
+    localStorage.setItem('acquisti-session', JSON.stringify(currentUser));
     document.getElementById('header-username').textContent = currentUser.username;
     document.getElementById('login-screen').classList.add('hidden');
     // Carica tema e dati utente
@@ -1342,6 +1343,7 @@ async function doLogin() {
 }
 
 function doLogout() {
+  localStorage.removeItem('acquisti-session');
   currentUser = null;
   data = { categories: [], items: [] };
   applyPreset('default');
@@ -1405,7 +1407,24 @@ function escHtml(str) {
   const configured = await checkServerStatus();
   const notConfiguredEl = document.getElementById('login-not-configured');
   if (notConfiguredEl) notConfiguredEl.style.display = configured ? 'none' : 'block';
-  // Porta il focus sull'username
+
+  // Auto-login se la sessione è salvata
+  const saved = localStorage.getItem('acquisti-session');
+  if (saved && configured) {
+    try {
+      currentUser = JSON.parse(saved);
+      document.getElementById('header-username').textContent = currentUser.username;
+      document.getElementById('login-screen').classList.add('hidden');
+      await loadTheme();
+      const loaded = await loadData();
+      data = loaded || { categories: [], items: [] };
+      renderLista();
+      return;
+    } catch {
+      localStorage.removeItem('acquisti-session');
+    }
+  }
+
   setTimeout(() => document.getElementById('login-username')?.focus(), 100);
 })();
 </script>
