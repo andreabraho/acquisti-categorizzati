@@ -18,14 +18,15 @@ app.use(express.static(__dirname));
 // Fallback al file locale per sviluppo
 function loadConfig() {
   if (process.env.MONGODB_URI) {
+    if (!process.env.MONGODB_DATABASE) throw new Error('MONGODB_DATABASE env var is required');
     return {
       connectionString: process.env.MONGODB_URI,
-      database: process.env.MONGODB_DATABASE || 'acquisti_categorizzati',
+      database: process.env.MONGODB_DATABASE,
       collection: process.env.MONGODB_COLLECTION || 'dati',
     };
   }
   try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
-  catch { return { connectionString: null, database: 'acquisti_categorizzati', collection: 'dati' }; }
+  catch { return { connectionString: null, database: null, collection: 'dati' }; }
 }
 
 function saveConfig(cfg) {
@@ -79,7 +80,7 @@ app.post('/api/connect', async (req, res) => {
   try {
     testClient = new MongoClient(connectionString, { serverSelectionTimeoutMS: 6000 });
     await testClient.connect();
-    await testClient.db(database || 'acquisti_categorizzati').command({ ping: 1 });
+    await testClient.db(database).command({ ping: 1 });
     await testClient.close();
   } catch (e) {
     try { await testClient?.close(); } catch {}
@@ -90,7 +91,7 @@ app.post('/api/connect', async (req, res) => {
 
   config = {
     connectionString,
-    database: database || 'acquisti_categorizzati',
+    database,
     collection: collection || 'dati',
   };
   saveConfig(config);
