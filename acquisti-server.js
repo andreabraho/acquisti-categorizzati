@@ -212,6 +212,32 @@ app.put('/api/data/:userId', async (req, res) => {
   }
 });
 
+// ---- DEV HOT-RELOAD (solo locale, non su Render) ----
+if (!process.env.PORT) {
+  const reloadClients = [];
+
+  app.get('/dev-reload', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write('data: connected\n\n');
+    reloadClients.push(res);
+    req.on('close', () => {
+      const i = reloadClients.indexOf(res);
+      if (i !== -1) reloadClients.splice(i, 1);
+    });
+  });
+
+  let reloadTimer;
+  fs.watch(path.join(__dirname, 'acquisti.html'), () => {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      console.log('[dev] acquisti.html modificato — ricarico il browser...');
+      reloadClients.forEach(res => res.write('data: reload\n\n'));
+    }, 120);
+  });
+}
+
 // ---- HEALTH CHECK (usato da Render) ----
 app.get('/health', (req, res) => res.json({ ok: true }));
 

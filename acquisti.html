@@ -1598,6 +1598,15 @@ function escHtml(str) {
 
   setTimeout(() => document.getElementById('login-username')?.focus(), 100);
 })();
+
+// ---- DEV HOT-RELOAD ----
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  (function connectReload() {
+    const es = new EventSource('/dev-reload');
+    es.onmessage = e => { if (e.data === 'reload') location.reload(); };
+    es.onerror = () => { es.close(); setTimeout(connectReload, 1500); };
+  })();
+}
 </script>
 </body>
 </html>
